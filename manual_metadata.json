@@ -1,0 +1,81 @@
+{
+  "name": "Text Files on Cloud Storage to BigQuery",
+  "description": "The Cloud Storage Text to BigQuery pipeline is a batch pipeline that allows you to read text files stored in Cloud Storage, transform them using a JavaScript User Defined Function (UDF) that you provide, and append the result to a BigQuery table.",
+  "mainClass": "org.example.beam.TextIOToBigQuery",
+  "parameters": [
+    {
+      "name": "inputFilePattern",
+      "label": "Cloud Storage Input File(s)",
+      "helpText": "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv)",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "JSONPath",
+      "label": "Cloud Storage location of your BigQuery schema file, described as a JSON",
+      "helpText": "JSON file with BigQuery Schema description. JSON Example: {\n\t\"BigQuery Schema\": [\n\t\t{\n\t\t\t\"name\": \"location\",\n\t\t\t\"type\": \"STRING\"\n\t\t},\n\t\t{\n\t\t\t\"name\": \"name\",\n\t\t\t\"type\": \"STRING\"\n\t\t},\n\t\t{\n\t\t\t\"name\": \"age\",\n\t\t\t\"type\": \"STRING\"\n\t\t},\n\t\t{\n\t\t\t\"name\": \"color\",\n\t\t\t\"type\": \"STRING\"\n\t\t},\n\t\t{\n\t\t\t\"name\": \"coffee\",\n\t\t\t\"type\": \"STRING\"\n\t\t}\n\t]\n}",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "outputTable",
+      "label": "BigQuery output table",
+      "helpText": "BigQuery table location to write the output to. The table\u0027s schema must match the input objects.",
+      "regexes": [
+        ".+:.+\\..+"
+      ],
+      "paramType": "BIGQUERY_TABLE"
+    },
+    {
+      "name": "bigQueryLoadingTemporaryDirectory",
+      "label": "Temporary directory for BigQuery loading process",
+      "helpText": "Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_WRITE_FOLDER"
+    },
+    {
+      "name": "javascriptTextTransformGcsPath",
+      "label": "JavaScript UDF path in Cloud Storage",
+      "helpText": "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions.",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "javascriptTextTransformFunctionName",
+      "label": "JavaScript UDF name",
+      "helpText": "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)",
+      "isOptional": true,
+      "regexes": [
+        "[a-zA-Z0-9_]+"
+      ],
+      "paramType": "TEXT"
+    }
+  ],
+  "runtimeParameters": {},
+  "category": {
+    "name": "batch_data_processing",
+    "displayName": "Process Data in Bulk (batch)"
+  },
+  "internalName": "GCS_Text_to_BigQuery",
+  "module": "text-io-to-bigquery",
+  "documentationLink": "https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-to-bigquery",
+  "requirements": [
+    "Create a JSON file that describes your {{bigquery_name_short}} schema.\n    \u003cp\u003eEnsure that there is a top-level JSON array titled \u003ccode\u003eBigQuery Schema\u003c/code\u003e and that its\n      contents follow the pattern \u003ccode\u003e{\"name\": \"COLUMN_NAME\", \"type\": \"DATA_TYPE\"}\u003c/code\u003e.\u003c/p\u003e\n    \u003cp\u003eThe following JSON describes an example BigQuery schema:\u003c/p\u003e\n\u003cpre class\u003d\"prettyprint lang-json\"\u003e\n{\n  \"BigQuery Schema\": [\n    {\n      \"name\": \"location\",\n      \"type\": \"STRING\"\n    },\n    {\n      \"name\": \"name\",\n      \"type\": \"STRING\"\n    },\n    {\n      \"name\": \"age\",\n      \"type\": \"STRING\"\n    },\n    {\n      \"name\": \"color\",\n      \"type\": \"STRING\"\n    },\n    {\n      \"name\": \"coffee\",\n      \"type\": \"STRING\"\n    }\n  ]\n}\n\u003c/pre\u003e",
+    "Create a JavaScript (\u003ccode\u003e.js\u003c/code\u003e) file with your UDF function that supplies the logic\n    to transform the lines of text. Your function must return a JSON string.\n    \u003cp\u003eFor example, this function splits each line of a CSV file and returns a JSON string after\n      transforming the values.\u003c/p\u003e\n\u003cpre class\u003d\"prettyprint\" suppresswarning\u003e\nfunction transform(line) {\nvar values \u003d line.split(\u0027,\u0027);\n\nvar obj \u003d new Object();\nobj.location \u003d values[0];\nobj.name \u003d values[1];\nobj.age \u003d values[2];\nobj.color \u003d values[3];\nobj.coffee \u003d values[4];\nvar jsonString \u003d JSON.stringify(obj);\n\nreturn jsonString;\n}\u003c/pre\u003e"
+  ],
+  "additionalDocumentation": [],
+  "googleReleased": true,
+  "preview": false,
+  "udfSupport": true,
+  "flexTemplate": false,
+  "hidden": false
+}
