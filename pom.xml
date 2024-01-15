@@ -21,7 +21,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.example</groupId>
-  <artifactId>text-io-to-bigquery</artifactId>
+  <artifactId>samples-to-bigquery</artifactId>
   <version>0.1</version>
 
   <packaging>jar</packaging>
@@ -54,6 +54,8 @@
     <caffeine.version>3.1.8</caffeine.version>
     <commons.version>1.8</commons.version>
     <commons-text.version>1.10.0</commons-text.version>
+    <commons-io.version>2.11.0</commons-io.version>
+    <jib.maven.version>3.4.0</jib.maven.version>
   </properties>
 
   <repositories>
@@ -123,7 +125,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <finalName>${project.artifactId}-bundled-${project.version}</finalName>
+              <finalName>${project.artifactId}-${project.version}</finalName>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>
@@ -150,6 +152,62 @@
     <pluginManagement>
       <plugins>
         <plugin>
+            <groupId>com.google.cloud.tools</groupId>
+            <artifactId>jib-maven-plugin</artifactId>
+            <version>${jib.maven.version}</version>
+            <configuration>
+                <!-- 
+                Reference: https://github.com/GoogleContainerTools/jib/tree/master/jib-maven-plugin#extended-usage
+                -->
+                <from>
+                    <!--
+                    The Dataflow Template base image to use. This
+                     should not need to change unless we want to use the JDK11
+                     -->
+                    <image>${base-container-image}:${base-container-image.version}</image>
+                </from>
+                <container>
+                    <!--
+                    The root directory to use to expand the compiled classes and dependencies in. The
+                    Jib plugin  will create the following directories under this root:
+                      - resources: All the files under src/resources will be copied to this folder as-is.
+                      - libs: All dependency jars needed to execute this pipeline will be copied into this
+                              folder.
+                      - classes: Compiled pipeline code will be copied into this folder.
+                    The libs and classes folders under appRoot should thus be added in the classpath
+                    defined in src/resources/command-spec.json.
+                    -->
+                    <appRoot>${app-root}</appRoot>
+                    <!--
+                    INHERIT the base containers entrypoint. Do not override or the Dataflow service
+                    will be unable to launch this template.
+                    -->
+                    <entrypoint>INHERIT</entrypoint>
+                    <environment>
+                        <!--
+                        Set an environment variable called DATAFLOW_JAVA_COMMAND_SPEC that points to the
+                        java-command-spec.json file inside the container. Note that since the Jib plugin
+                        copies the containers of src/resources/* to appRoot/resources, the value of this
+                        environment variable can be set here.
+                        -->
+                        <DATAFLOW_JAVA_COMMAND_SPEC>
+                            ${command-spec}
+                        </DATAFLOW_JAVA_COMMAND_SPEC>
+                    </environment>
+                </container>
+		<containerizingMode>packaged</containerizingMode>                
+            </configuration>
+            <executions>
+                <execution>
+                    <id>jib</id>
+                    <phase>install</phase>
+                    <goals>
+                        <goal>build</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
           <version>${maven-exec-plugin.version}</version>
@@ -160,7 +218,6 @@
       </plugins>
     </pluginManagement>
   </build>
-
   <profiles>
     <profile>
       <id>templatesStage</id>
@@ -169,6 +226,27 @@
       </activation>
       <build>
         <plugins>
+          <plugin>
+            <groupId>com.google.cloud.tools</groupId>
+            <artifactId>jib-maven-plugin</artifactId>
+            <configuration>
+              <from>
+                <image>gcr.io/dataflow-templates-base/java11-template-launcher-base</image>
+              </from>
+              <container>
+		      <entrypoint>java,-jar,/app/${project.artifactId}-bundled-${project.version}.jar</entrypoint>
+              </container>
+              <extraDirectories>
+                    <paths>
+                        <path>
+                            <from>target/</from>
+                            <includes>*.jar</includes>
+                            <into>/app</into>
+                        </path>
+                    </paths>
+              </extraDirectories>
+            </configuration>
+          </plugin>  
           <plugin>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>templates-maven-plugin</artifactId>
@@ -351,8 +429,20 @@
   <dependencies>
     <dependency>
       <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
+      <version>${beam.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
       <version>${beam.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>${commons-io.version}</version>
     </dependency>
     <!-- Adds a dependency on the Beam SDK. -->
     <dependency>
@@ -396,7 +486,10 @@
         </exclusion>
       </exclusions>
     </dependency>
-
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigquery</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-bigquery</artifactId>
@@ -414,20 +507,6 @@
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client</artifactId>
-      <exclusions>
-        <!-- Exclude an old version of guava that is being pulled
-             in by a transitive dependency of google-api-client -->
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava-jdk5</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <dependency>
-      <groupId>com.google.apis</groupId>
-      <artifactId>google-api-services-pubsub</artifactId>
-      <version>${pubsub.version}</version>
       <exclusions>
         <!-- Exclude an old version of guava that is being pulled
              in by a transitive dependency of google-api-client -->
@@ -499,12 +578,6 @@
       <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- Templates Annotations -->
-    <dependency>
-        <groupId>com.google.cloud.teleport.metadata</groupId>
-        <artifactId>metadata</artifactId>
-        <version>1.0-SNAPSHOT</version>
-   </dependency>
    <!-- UDFs -->
    <dependency>
      <groupId>org.openjdk.nashorn</groupId>

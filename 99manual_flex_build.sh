@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Build Flex Template Manually using Cloud Build.
+#
 set -x
 
 source "$(dirname $0)/cicd_config.sh"

@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
+ 
+# Build all the templates using Maven without Cloud Build
 set -x
 
 source "$(dirname $0)/cicd_config.sh"
 
 # Build the Flex Template.
-mvn clean package -PtemplatesStage  \
+mvn clean package -X -e -PtemplatesStage  \
 	-DskipTests \
 	-DprojectId="$PROJECT_ID" \
-	-DbucketName="$FLEX_TEMPLATE_BUCKET" \
+	-DbucketName="$TEMPLATE_BUCKET" \
 	-DstagePrefix="templates" \
-	-DtemplateName="$FLEX_TEMPLATE_NAME" 
+	-DtemplateName="$1" 
 
 

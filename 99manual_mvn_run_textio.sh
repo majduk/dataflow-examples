@@ -4,11 +4,11 @@ set -x
 source "$(dirname $0)/cicd_config.sh"
 
 mvn -Pdataflow-runner compile exec:java \
-    -Dexec.mainClass=${DF_MAIN_CLASS} \
+    -Dexec.mainClass=${TEXTIO_MAIN_CLASS} \
     -Dexec.args="--project=${PROJECT_ID} \
     --impersonateServiceAccount=${DF_CONTROLLER_SA} \
     --serviceAccount=${DF_DATAFLOW_SA} \
-    --jobName=${DF_JOB_NAME} \
+    --jobName=${TEXTIO_JOB_NAME} \
     --runner=DataflowRunner \
     --region=${REGION} \
     --tempLocation=${DF_TEMP_LOCATION}\
